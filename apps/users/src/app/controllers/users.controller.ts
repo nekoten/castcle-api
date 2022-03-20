@@ -28,6 +28,7 @@ import {
   AuthenticationService,
   CampaignService,
   CampaignType,
+  CommentService,
   ContentService,
   createCastcleMeta,
   getRelationship,
@@ -42,8 +43,10 @@ import {
   AdsRequestDto,
   ContentResponse,
   ContentsResponse,
+  CreateCommentBody,
   DEFAULT_CONTENT_QUERY_OPTIONS,
   DEFAULT_QUERY_OPTIONS,
+  EditCommentBody,
   ExpansionQuery,
   FollowResponse,
   GetContentsDto,
@@ -145,7 +148,8 @@ export class UsersController {
     private userService: UserService,
     private notifyService: NotificationService,
     private download: Downloader,
-    private facebookClient: FacebookClient
+    private facebookClient: FacebookClient,
+    private commentService: CommentService
   ) {}
 
   _uploadImage = (base64: string, options?: ImageUploadOptions) =>
@@ -2044,5 +2048,152 @@ export class UsersController {
       adsCampaign._id,
       AdsBoostStatus.End
     );
+  }
+
+  @ApiBody({
+    type: CreateCommentBody,
+  })
+  @CastcleBasicAuth()
+  @Post(':id/comments')
+  async createComment(
+    @Param('id') id: string,
+    @Body() commentBody: CreateCommentBody,
+    @Req() { $credential }: CredentialRequest
+  ) {
+    this.logger.log('Start comment : ' + JSON.stringify(commentBody));
+    try {
+      const [authorizedUser, content, user] = await Promise.all([
+        this.authService.getUserFromAccount($credential.account),
+        this.contentService.getContentById(commentBody.contentId),
+        this.userService.getByIdOrCastcleId(id),
+      ]);
+
+      const comment = await this.contentService.createCommentForContent(
+        user,
+        content,
+        { message: commentBody.message }
+      );
+
+      this.notifyService.notifyToUser({
+        type: NotificationType.Comment,
+        message: `${user.displayName} ตอบกลับโพสต์ของคุณ`,
+        read: false,
+        source: NotificationSource.Profile,
+        sourceUserId: user._id,
+        targetRef: {
+          _id: comment._id,
+        },
+        account: { _id: content.author.id },
+      });
+
+      const payload = await this.commentService.convertCommentToCommentResponse(
+        authorizedUser,
+        comment,
+        [],
+        { hasRelationshipExpansion: false }
+      );
+
+      return { payload };
+    } catch (error) {
+      this.logger.error(error);
+      throw new CastcleException(CastcleStatus.INVALID_ACCESS_TOKEN);
+    }
+  }
+
+  @ApiBody({
+    type: EditCommentBody,
+  })
+  @CastcleBasicAuth()
+  @Put(':id/comments/:source_comment_id')
+  async updateComment(
+    @Param('id') id: string,
+    @Param('source_comment_id') commentId: string,
+    @Body() editCommentBody: EditCommentBody,
+    @Req() req: CredentialRequest
+  ) {
+    const requestUser = await this._getUser(id, req.$credential);
+    const authorizedUser = await this._validateOwnerAccount(req, requestUser);
+
+    const comment = await this.contentService.getCommentById(commentId);
+    if (!comment || String(comment.author._id) !== String(authorizedUser.id))
+      throw new CastcleException(CastcleStatus.FORBIDDEN_REQUEST);
+
+    const updatedComment = await this.contentService.updateComment(comment, {
+      message: editCommentBody.message,
+    });
+
+    return {
+      payload: await this.commentService.convertCommentToCommentResponse(
+        authorizedUser,
+        updatedComment,
+        [],
+        { hasRelationshipExpansion: false }
+      ),
+    };
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @CastcleBasicAuth()
+  @Delete(':id/comments/:source_comment_id')
+  async deleteComment(
+    @Param('id') id: string,
+    @Param('source_comment_id') commentId: string,
+    @Req() req: CredentialRequest
+  ) {
+    const requestUser = await this._getUser(id, req.$credential);
+    const authorizedUser = await this._validateOwnerAccount(req, requestUser);
+
+    const comment = await this.contentService.getCommentById(commentId);
+    if (!comment || String(comment.author._id) !== String(authorizedUser.id))
+      throw new CastcleException(CastcleStatus.FORBIDDEN_REQUEST);
+
+    await this.contentService.deleteComment(comment);
+    return '';
+  }
+
+  @ApiBody({
+    type: EditCommentBody,
+  })
+  @CastcleBasicAuth()
+  @Post(':id/comments/:source_comment_id/reply')
+  async replyComment(
+    @Param('id') id: string,
+    @Param('source_comment_id') commentId: string,
+    @Body() replyCommentBody: EditCommentBody,
+    @Req() req: CredentialRequest
+  ) {
+    const requestUser = await this._getUser(id, req.$credential);
+    const authorizedUser = await this._validateOwnerAccount(req, requestUser);
+
+    const comment = await this.contentService.getCommentById(commentId);
+    if (!comment) throw new CastcleException(CastcleStatus.FORBIDDEN_REQUEST);
+
+    const replyComment = await this.contentService.replyComment(
+      authorizedUser,
+      comment,
+      {
+        message: replyCommentBody.message,
+      }
+    );
+    this.notifyService.notifyToUser({
+      type: NotificationType.Comment,
+      message: `${authorizedUser.displayName} ตอบกลับความคิดเห็นของคุณ`,
+      read: false,
+      source: NotificationSource.Profile,
+      sourceUserId: authorizedUser._id,
+      targetRef: {
+        _id: comment._id,
+      },
+      account: { _id: comment.author._id },
+    });
+
+    return {
+      payload: await this.commentService.convertCommentToCommentResponse(
+        authorizedUser,
+        replyComment,
+        [],
+        { hasRelationshipExpansion: false }
+      ),
+    };
   }
 }

@@ -22,6 +22,7 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 import { CommentType } from '../schemas';
 import { CastcleMeta, CastcleMetric, CastcleParticipate } from './common.dto';
 import { IncludeUser } from './content.dto';
@@ -76,4 +77,23 @@ export class CommentsResponse {
   message?: string;
   payload: CommentPayload[];
   meta: CastcleMeta;
+}
+
+export class CreateCommentBody {
+  @ApiProperty()
+  @IsString()
+  message: string;
+  @ApiProperty()
+  @IsString()
+  contentId: string;
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  feedItemId?: string;
+}
+
+export class EditCommentBody {
+  @ApiProperty()
+  @IsString()
+  message: string;
 }
