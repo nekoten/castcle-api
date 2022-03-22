@@ -21,8 +21,8 @@
  * or have any questions.
  */
 
-import { Test, TestingModule } from '@nestjs/testing';
 import {
+  AuthenticationService,
   CommentService,
   ContentService,
   HashtagService,
@@ -30,15 +30,16 @@ import {
   MongooseForFeatures,
   NotificationService,
   QueueName,
+  UserService,
 } from '@castcle-api/database';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserService, AuthenticationService } from '@castcle-api/database';
-import { CommentController } from './comment.controller';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { Content, Credential, User } from '@castcle-api/database/schemas';
 import { ContentType, ShortPayload } from '@castcle-api/database/dtos';
-import { CacheModule } from '@nestjs/common';
+import { Content, Credential, User } from '@castcle-api/database/schemas';
 import { getQueueToken } from '@nestjs/bull';
+import { CacheModule } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { CommentController } from './comment.controller';
 
 describe('CommentController', () => {
   let mongod: MongoMemoryServer;
@@ -142,7 +143,7 @@ describe('CommentController', () => {
       );
 
       expect(commentResult.payload).toBeDefined();
-      rootCommentId = commentResult.payload.id;
+      rootCommentId = commentResult.payload.payload.id;
     });
   });
   describe('#replyComment()', () => {
@@ -243,7 +244,9 @@ describe('CommentController', () => {
         userCredentialRequest,
         { hasRelationshipExpansion: false }
       );
-      expect(comments.payload[0]).toEqual(updateComment.payload);
+      expect(comments.payload[comments.payload.length - 1]).toEqual(
+        updateComment.payload.payload
+      );
     });
   });
   describe('#deleteComment()', () => {

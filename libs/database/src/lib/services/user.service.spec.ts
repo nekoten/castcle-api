@@ -21,6 +21,7 @@
  * or have any questions.
  */
 import { CastcleException, CastcleStatus } from '@castcle-api/utils/exception';
+import { getQueueToken } from '@nestjs/bull';
 import { CacheModule } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
@@ -49,13 +50,12 @@ import {
   Transaction,
   User,
 } from '../schemas';
+import { SocialPageDto } from './../dtos/user.dto';
 import { AuthenticationService } from './authentication.service';
 import { CommentService } from './comment.service';
 import { ContentService } from './content.service';
 import { HashtagService } from './hashtag.service';
 import { UserService } from './user.service';
-import { SocialPageDto } from './../dtos/user.dto';
-import { getQueueToken } from '@nestjs/bull';
 
 describe('User Service', () => {
   let mongod: MongoMemoryReplSet;
@@ -699,14 +699,22 @@ describe('User Service', () => {
       it('should flag all comment from user to hidden', async () => {
         const comments = await commentService.getCommentsByContentId(
           userA,
-          fixContents[0]._id
+          fixContents[0]._id,
+          {
+            maxResults: 5,
+            hasRelationshipExpansion: false,
+          }
         );
         expect(comments.payload.length).toEqual(3);
         expect(comments.meta.resultCount).toEqual(3);
         await service.removeAllCommentsFromUsers([userA]);
         const comments2 = await commentService.getCommentsByContentId(
           userA,
-          fixContents[0]._id
+          fixContents[0]._id,
+          {
+            maxResults: 5,
+            hasRelationshipExpansion: false,
+          }
         );
         expect(comments2.meta.resultCount).toEqual(2);
         expect(comments2.payload.length).toEqual(2);
@@ -723,7 +731,11 @@ describe('User Service', () => {
         //remove all comment / follower and engagement
         const comments2 = await commentService.getCommentsByContentId(
           userA,
-          fixContents[0]._id
+          fixContents[0]._id,
+          {
+            maxResults: 5,
+            hasRelationshipExpansion: false,
+          }
         );
         expect(comments2.meta.resultCount).toEqual(1);
         const postFollower = await service.getFollowers(

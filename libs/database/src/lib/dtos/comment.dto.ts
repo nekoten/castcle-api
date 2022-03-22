@@ -20,12 +20,11 @@
  * Thailand 10160, or visit www.castcle.com if you need additional information
  * or have any questions.
  */
-
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 import { CommentType } from '../schemas';
 import { CastcleMeta, CastcleMetric, CastcleParticipate } from './common.dto';
-import { IncludeUser } from './content.dto';
+import { Author, IncludeUser } from './content.dto';
 
 export class CommentDto {
   author: any; //mongooseId
@@ -73,11 +72,11 @@ export class CommentPayload {
   updatedAt: string;
 }
 
-export class CommentsResponse {
-  message?: string;
-  payload: CommentPayload[];
-  meta: CastcleMeta;
-}
+// export class CommentsResponse {
+//   message?: string;
+//   payload: CommentPayload[];
+//   meta: CastcleMeta;
+// }
 
 export class CreateCommentBody {
   @ApiProperty()
@@ -96,4 +95,52 @@ export class EditCommentBody {
   @ApiProperty()
   @IsString()
   message: string;
+}
+
+export class CommentIncludes {
+  users: IncludeUser[];
+  comments?: CommentPayload[];
+
+  constructor({ comments, users }: CommentIncludes) {
+    this.comments = comments;
+    this.users = CommentIncludes.filterAuthors(users);
+  }
+
+  static filterAuthors(rawAuthors: IncludeUser[]) {
+    const authors: Author[] = [];
+
+    rawAuthors.forEach((author) => {
+      const authorIndex = authors.findIndex(
+        ({ id }) => String(author.id) == String(id)
+      );
+
+      if (authorIndex >= 0) return;
+
+      // author.avatar = author.avatar
+      //   ? new Image(author.avatar).toSignUrls()
+      //   : Configs.DefaultAvatarImages;
+
+      authors.push(author);
+    });
+
+    return authors;
+  }
+}
+
+export class CommentResponse {
+  @ApiProperty()
+  payload: CommentPayload;
+  @ApiProperty()
+  includes: CommentIncludes;
+}
+
+export class CommentsResponse {
+  @ApiProperty()
+  payload: CommentPayload[];
+
+  @ApiProperty()
+  includes: CommentIncludes;
+
+  @ApiProperty()
+  meta: CastcleMeta;
 }

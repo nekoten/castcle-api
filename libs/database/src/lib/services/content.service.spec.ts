@@ -649,7 +649,11 @@ describe('ContentService', () => {
           expect(postReply.visibility).toEqual(EntityVisibility.Deleted);
           const comments = await commentService.getCommentsByContentId(
             user,
-            contentA._id
+            contentA._id,
+            {
+              maxResults: 5,
+              hasRelationshipExpansion: false,
+            }
           );
           expect(comments.meta.resultCount).toEqual(1);
           expect(comments.payload[0].reply.length).toEqual(0);
@@ -664,7 +668,11 @@ describe('ContentService', () => {
           await service.deleteComment(rootComment);
           const comments = await commentService.getCommentsByContentId(
             user,
-            contentA._id
+            contentA._id,
+            {
+              maxResults: 5,
+              hasRelationshipExpansion: false,
+            }
           );
           expect(comments.meta.resultCount).toEqual(0);
         });

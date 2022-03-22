@@ -22,6 +22,29 @@
  */
 
 import {
+  AuthenticationService,
+  CommentService,
+  ContentService,
+  NotificationService,
+  UserService,
+} from '@castcle-api/database';
+import {
+  ExpansionQuery,
+  NotificationRef,
+  NotificationSource,
+  NotificationType,
+  PaginationQuery,
+} from '@castcle-api/database/dtos';
+import { UserType } from '@castcle-api/database/schemas';
+import { CacheKeyName } from '@castcle-api/utils/cache';
+import {
+  CastcleAuth,
+  CastcleBasicAuth,
+  CastcleController,
+} from '@castcle-api/utils/decorators';
+import { CastcleException, CastcleStatus } from '@castcle-api/utils/exception';
+import { CredentialRequest } from '@castcle-api/utils/interceptors';
+import {
   Body,
   Delete,
   Get,
@@ -32,37 +55,13 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import {
-  AuthenticationService,
-  ContentService,
-  NotificationService,
-  CommentService,
-  UserService,
-} from '@castcle-api/database';
-import {
-  DEFAULT_QUERY_OPTIONS,
-  ExpansionQuery,
-  NotificationRef,
-  NotificationSource,
-  NotificationType,
-} from '@castcle-api/database/dtos';
-import { CredentialRequest } from '@castcle-api/utils/interceptors';
-import { CastcleException, CastcleStatus } from '@castcle-api/utils/exception';
 import { ApiBody } from '@nestjs/swagger';
-import { LimitPipe, PagePipe, SortByPipe } from '@castcle-api/utils/pipes';
 import {
   CreateCommentBody,
   EditCommentBody,
   LikeCommentBody,
   ReplyCommentBody,
 } from '../dtos/comment.dto';
-import { CacheKeyName } from '@castcle-api/utils/cache';
-import {
-  CastcleController,
-  CastcleAuth,
-  CastcleBasicAuth,
-} from '@castcle-api/utils/decorators';
-import { UserType } from '@castcle-api/database/schemas';
 
 @CastcleController({ path: 'contents', version: '1.0' })
 export class CommentController {
@@ -74,6 +73,9 @@ export class CommentController {
     private userService: UserService
   ) {}
 
+  /**
+   * @deprecated The method should not be used. Please use POST users/:id/comments
+   */
   @ApiBody({
     type: CreateCommentBody,
   })
@@ -133,34 +135,23 @@ export class CommentController {
   async getAllComment(
     @Param('id') contentId: string,
     @Req() { $credential }: CredentialRequest,
-    @Query() expansionQuery: ExpansionQuery,
-    @Query('sortBy', SortByPipe)
-    sortBy = DEFAULT_QUERY_OPTIONS.sortBy,
-    @Query('page', PagePipe)
-    page = DEFAULT_QUERY_OPTIONS.page,
-    @Query('limit', LimitPipe)
-    limit = DEFAULT_QUERY_OPTIONS.limit
+    @Query() query: PaginationQuery // @Query() expansionQuery: ExpansionQuery, // // @Query('sortBy', SortByPipe) // sortBy = DEFAULT_QUERY_OPTIONS.sortBy, // @Query('page', PagePipe) // page = DEFAULT_QUERY_OPTIONS.page, // @Query('limit', LimitPipe) // limit = DEFAULT_QUERY_OPTIONS.limit
   ) {
     const [authorizedUser, content] = await Promise.all([
       this.authService.getUserFromAccount($credential.account),
       this.contentService.getContentById(contentId),
     ]);
-    if (authorizedUser)
-      return this.commentService.getCommentsByContentId(
-        authorizedUser,
-        content._id,
-        { ...expansionQuery, limit, page, sortBy }
-      );
-    else {
-      //guestCase
-      return this.commentService.getCommentsByContentIdFromGuest(content._id, {
-        limit,
-        page,
-        sortBy,
-      });
-    }
+
+    return this.commentService.getCommentsByContentId(
+      authorizedUser,
+      content._id,
+      query
+    );
   }
 
+  /**
+   * @deprecated The method should not be used. Please use POST users/:id/comments/:source_comment_id
+   */
   @ApiBody({
     type: ReplyCommentBody,
   })
@@ -209,6 +200,9 @@ export class CommentController {
     };
   }
 
+  /**
+   * @deprecated The method should not be used. Please use PUT users/:id/comments/:source_comment_id
+   */
   @ApiBody({
     type: EditCommentBody,
   })
@@ -238,6 +232,9 @@ export class CommentController {
     };
   }
 
+  /**
+   * @deprecated The method should not be used. Please use DELETE users/:id/comments/:commentId
+   */
   @HttpCode(204)
   @CastcleBasicAuth()
   @Delete(':id/comments/:commentId')

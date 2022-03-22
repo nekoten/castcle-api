@@ -1937,7 +1937,7 @@ describe('AppController', () => {
       const user = mocksUsers[0].user;
       const updateComment = await appController.updateComment(
         user.displayId,
-        comment.payload.id,
+        comment.payload.payload.id,
         { message: 'zup' },
         credential
       );
@@ -1949,7 +1949,7 @@ describe('AppController', () => {
       await expect(
         appController.updateComment(
           user.displayId,
-          comment.payload.id,
+          comment.payload.payload.id,
           { message: 'zup' },
           credential
         )
@@ -1965,7 +1965,7 @@ describe('AppController', () => {
 
       const replyResult = await appController.replyComment(
         user1.displayId,
-        comment.payload.id,
+        comment.payload.payload.id,
         { message: 'yo' },
         credentialUser1
       );
@@ -1977,7 +1977,7 @@ describe('AppController', () => {
       await expect(
         appController.deleteComment(
           user.displayId,
-          comment.payload.id,
+          comment.payload.payload.id,
           credential
         )
       ).rejects.toEqual(new CastcleException(CastcleStatus.FORBIDDEN_REQUEST));
@@ -1987,12 +1987,13 @@ describe('AppController', () => {
       const user = mocksUsers[0].user;
       await appController.deleteComment(
         user.displayId,
-        comment.payload.id,
+        comment.payload.payload.id,
         credential
       );
       const result = await commentService.getCommentsByContentId(
         user,
-        comment.payload.id
+        comment.payload.id,
+        { maxResults: 5, hasRelationshipExpansion: false }
       );
       expect(result.payload.length).toEqual(0);
     });

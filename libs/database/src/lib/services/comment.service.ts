@@ -1,30 +1,55 @@
+/*
+ * Copyright (c) 2021, Castcle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 3 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * version 3 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 3 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Castcle, 22 Phet Kasem 47/2 Alley, Bang Khae, Bangkok,
+ * Thailand 10160, or visit www.castcle.com if you need additional information
+ * or have any questions.
+ */
 import { Configs } from '@castcle-api/environments';
+import { CastLogger } from '@castcle-api/logger';
 import { Image } from '@castcle-api/utils/aws';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { createCastcleMeta } from '../database.module';
 import {
-  CastcleQueryOptions,
   CommentPayload,
   CommentsResponse,
-  DEFAULT_QUERY_OPTIONS,
   EntityVisibility,
   ExpansionQuery,
+  IncludeUser,
+  PaginationQuery,
 } from '../dtos';
 import {
   Comment,
   CommentType,
   Engagement,
   EngagementType,
-  User,
   Relationship,
   Revision,
+  User,
 } from '../schemas';
-import { getRelationship } from '../utils/common';
+import { createCastcleFilter, getRelationship } from '../utils/common';
+import { CommentIncludes, CommentResponse } from './../dtos/comment.dto';
 
 @Injectable()
 export class CommentService {
+  private logger = new CastLogger(CommentService.name);
   constructor(
     @InjectModel('Comment')
     private commentModel: Model<Comment>,
@@ -36,12 +61,50 @@ export class CommentService {
     private revisionModel: Model<Revision>
   ) {}
 
+  private convertUserToAuthor(
+    user: User,
+    viewer?: User,
+    hasRelationshipExpansion?: boolean,
+    relationships?: Relationship[]
+  ) {
+    return viewer
+      ? ({
+          avatar:
+            user.profile && user.profile.images && user.profile.images.avatar
+              ? new Image(user.profile.images.avatar).toSignUrls()
+              : Configs.DefaultAvatarImages,
+          castcleId: user.displayId,
+          displayName: user.displayName,
+          id: user._id,
+          type: user.type,
+          verified: user.verified,
+          ...getRelationship(
+            relationships,
+            viewer._id,
+            user._id,
+            hasRelationshipExpansion
+          ),
+        } as IncludeUser)
+      : ({
+          avatar:
+            user.profile && user.profile.images && user.profile.images.avatar
+              ? new Image(user.profile.images.avatar).toSignUrls()
+              : Configs.DefaultAvatarImages,
+          castcleId: user.displayId,
+          displayName: user.displayName,
+          id: user._id,
+          type: user.type,
+          verified: user.verified,
+        } as IncludeUser);
+  }
+
   async convertCommentToCommentResponse(
     viewer: User,
     comment: Comment,
     engagements: Engagement[],
     { hasRelationshipExpansion }: ExpansionQuery
   ) {
+    const users: IncludeUser[] = [];
     const [replies, revisionCount] = await Promise.all([
       this.commentModel
         .find({
@@ -73,15 +136,49 @@ export class CommentService {
         })
       : [];
 
-    return this.mapContentToContentResponse(
-      comment,
-      engagements,
-      relationships,
-      hasRelationshipExpansion,
-      revisionCount,
-      replies,
-      viewer
+    if (comment.author) {
+      users.push(
+        this.convertUserToAuthor(
+          comment.author,
+          viewer,
+          hasRelationshipExpansion,
+          relationships
+        )
+      );
+    }
+
+    const engagementsReply = await this.engagementModel.find({
+      targetRef: {
+        $in: replies.map((r) => ({ $ref: 'comment', $id: r._id })),
+      },
+    });
+
+    const replyPayload = await Promise.all(
+      replies.map(async (reply) => {
+        const revisionReplyCount = await this.revisionModel
+          .countDocuments({
+            objectRef: { $id: reply._id, $ref: 'comment' },
+            'payload.author._id': reply.author._id,
+          })
+          .exec();
+        return this.mapCommentToCommentResponse(
+          reply,
+          engagementsReply,
+          revisionReplyCount,
+          []
+        );
+      })
     );
+
+    return {
+      payload: this.mapCommentToCommentResponse(
+        comment,
+        engagements,
+        revisionCount,
+        replies
+      ),
+      includes: new CommentIncludes({ comments: replyPayload, users }),
+    } as CommentResponse;
   }
 
   private getLike(engagements: Engagement[], id: string) {
@@ -90,144 +187,23 @@ export class CommentService {
     });
   }
 
-  private mapContentToContentResponse(
+  private mapCommentToCommentResponse(
     comment: Comment,
     engagements: Engagement[],
-    relationships: any,
-    hasRelationshipExpansion: boolean,
     revisionCount: number,
-    replies: Comment[],
-    viewer?: User
+    replies: Comment[]
   ) {
-    const author = viewer
-      ? {
-          avatar:
-            comment.author.profile &&
-            comment.author.profile.images &&
-            comment.author.profile.images.avatar
-              ? new Image(comment.author.profile.images.avatar).toSignUrls()
-              : Configs.DefaultAvatarImages,
-          castcleId: comment.author.displayId,
-          displayName: comment.author.displayName,
-          id: comment.author._id,
-          type: comment.author.type,
-          verified: comment.author.verified,
-          ...getRelationship(
-            relationships,
-            viewer._id,
-            comment.author._id,
-            hasRelationshipExpansion
-          ),
-        }
-      : {
-          avatar:
-            comment.author.profile &&
-            comment.author.profile.images &&
-            comment.author.profile.images.avatar
-              ? new Image(comment.author.profile.images.avatar).toSignUrls()
-              : Configs.DefaultAvatarImages,
-          castcleId: comment.author.displayId,
-          displayName: comment.author.displayName,
-          id: comment.author._id,
-          type: comment.author.type,
-          verified: comment.author.verified,
-        };
     return {
       id: comment._id,
       message: comment.message,
       metrics: { likeCount: comment.engagements.like.count },
       participate: { liked: this.getLike(engagements, comment.id) },
-      author: author,
+      author: comment.author._id,
       hasHistory: revisionCount > 1,
-      reply: replies.map((reply) => {
-        const replyAuthor = viewer
-          ? {
-              avatar:
-                reply.author.profile &&
-                reply.author.profile.images &&
-                reply.author.profile.images.avatar
-                  ? new Image(reply.author.profile.images.avatar).toSignUrls()
-                  : Configs.DefaultAvatarImages,
-              castcleId: reply.author.displayId,
-              displayName: reply.author.displayName,
-              id: reply.author._id,
-              verified: reply.author.verified,
-              type: reply.author.type,
-              ...getRelationship(
-                relationships,
-                viewer._id,
-                reply.author._id,
-                hasRelationshipExpansion
-              ),
-            }
-          : {
-              avatar:
-                reply.author.profile &&
-                reply.author.profile.images &&
-                reply.author.profile.images.avatar
-                  ? new Image(reply.author.profile.images.avatar).toSignUrls()
-                  : Configs.DefaultAvatarImages,
-              castcleId: reply.author.displayId,
-              displayName: reply.author.displayName,
-              id: reply.author._id,
-              verified: reply.author.verified,
-              type: reply.author.type,
-            };
-        return {
-          id: reply._id,
-          createdAt: reply.createdAt.toISOString(),
-          message: reply.message,
-          author: replyAuthor,
-          metrics: { likeCount: reply.engagements.like.count },
-          participate: { liked: this.getLike(engagements, reply.id) },
-        };
-      }),
+      reply: replies.map((reply) => reply._id),
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
     } as CommentPayload;
-  }
-
-  async convertCommentsToCommentResponseForGuest(comments: Comment[]) {
-    const commentsIds = comments.map(({ _id }) => _id);
-    const commentsAuthorIds = comments.map(({ author }) => author._id);
-    const [replies, revisions] = await Promise.all([
-      this.commentModel
-        .find({
-          'targetRef.$id': { $in: commentsIds },
-          'targetRef.$ref': 'comment',
-          type: CommentType.Reply,
-          visibility: EntityVisibility.Publish,
-        })
-        .exec(),
-      this.revisionModel
-        .find(
-          {
-            'objectRef.$id': { $in: commentsIds },
-            'objectRef.$ref': 'comment',
-            'payload.author._id': { $in: commentsAuthorIds },
-          },
-          { 'objectRef.$id': true }
-        )
-        .exec(),
-    ]);
-    return comments.map((comment) => {
-      const revisionCount = revisions.filter(
-        ({ objectRef }) => String(objectRef.$id) === String(comment._id)
-      ).length;
-
-      const commentReplies = replies.filter(({ targetRef }) => {
-        return String(targetRef.oid) === String(comment._id);
-      });
-
-      return this.mapContentToContentResponse(
-        comment,
-        [],
-        [],
-        false,
-        revisionCount,
-        commentReplies
-      );
-    });
   }
 
   async convertCommentsToCommentResponse(
@@ -236,6 +212,7 @@ export class CommentService {
     engagements: Engagement[],
     { hasRelationshipExpansion }: ExpansionQuery
   ) {
+    const users: IncludeUser[] = [];
     const commentsIds = comments.map(({ _id }) => _id);
     const commentsAuthorIds = comments.map(({ author }) => author._id);
     const [replies, revisions] = await Promise.all([
@@ -274,7 +251,40 @@ export class CommentService {
         })
       : [];
 
-    return comments.map((comment) => {
+    const engagementsReply = await this.engagementModel.find({
+      targetRef: {
+        $in: replies.map((r) => ({ $ref: 'comment', $id: r._id })),
+      },
+    });
+
+    const replyPayload = await Promise.all(
+      replies.map(async (reply) => {
+        if (reply.author) {
+          users.push(
+            this.convertUserToAuthor(
+              reply.author,
+              viewer,
+              hasRelationshipExpansion,
+              relationships
+            )
+          );
+        }
+        const revisionReplyCount = await this.revisionModel
+          .countDocuments({
+            objectRef: { $id: reply._id, $ref: 'comment' },
+            'payload.author._id': reply.author._id,
+          })
+          .exec();
+        return this.mapCommentToCommentResponse(
+          reply,
+          engagementsReply,
+          revisionReplyCount,
+          []
+        );
+      })
+    );
+
+    const commentPlyload = comments.map((comment) => {
       const revisionCount = revisions.filter(
         ({ objectRef }) => String(objectRef.$id) === String(comment._id)
       ).length;
@@ -283,43 +293,30 @@ export class CommentService {
         return String(targetRef.oid) === String(comment._id);
       });
 
-      return this.mapContentToContentResponse(
+      if (comment.author) {
+        users.push(
+          this.convertUserToAuthor(
+            comment.author,
+            viewer,
+            hasRelationshipExpansion,
+            relationships
+          )
+        );
+      }
+
+      return this.mapCommentToCommentResponse(
         comment,
         engagements,
-        relationships,
-        hasRelationshipExpansion,
         revisionCount,
-        commentReplies,
-        viewer
+        commentReplies
       );
     });
-  }
 
-  getCommentsByContentIdFromGuest = async (
-    contentId: string,
-    options: CastcleQueryOptions
-  ) => {
-    const query: FilterQuery<Comment> = {
-      targetRef: { $id: contentId, $ref: 'content' },
-      visibility: EntityVisibility.Publish,
-    };
-
-    const comments = await this.commentModel
-      .find(query)
-      .limit(options.limit)
-      .skip(options.page - 1)
-      .sort(
-        `${options.sortBy.type === 'desc' ? '-' : ''}${options.sortBy.field}`
-      )
-      .exec();
-    const payload = await this.convertCommentsToCommentResponseForGuest(
-      comments
-    );
     return {
-      payload,
-      meta: createCastcleMeta(comments),
+      payload: commentPlyload,
+      includes: new CommentIncludes({ comments: replyPayload, users }),
     };
-  };
+  }
 
   /**
    * Get Total Comment from content
@@ -330,24 +327,27 @@ export class CommentService {
   getCommentsByContentId = async (
     viewer: User,
     contentId: string,
-    options: CastcleQueryOptions & ExpansionQuery = {
-      ...DEFAULT_QUERY_OPTIONS,
-      hasRelationshipExpansion: false,
-    }
+    paginationQuery: PaginationQuery
   ): Promise<CommentsResponse> => {
-    const query: FilterQuery<Comment> = {
+    let query: FilterQuery<Comment> = {
       targetRef: { $id: contentId, $ref: 'content' },
       visibility: EntityVisibility.Publish,
     };
 
-    const comments = await this.commentModel
-      .find(query)
-      .limit(options.limit)
-      .skip(options.page - 1)
-      .sort(
-        `${options.sortBy.type === 'desc' ? '-' : ''}${options.sortBy.field}`
-      )
-      .exec();
+    this.logger.log('Filter Since & Until');
+    query = await createCastcleFilter(query, {
+      sinceId: paginationQuery?.sinceId,
+      untilId: paginationQuery?.untilId,
+    });
+
+    const total = await this.commentModel.countDocuments(query).exec();
+    const comments = total
+      ? await this.commentModel
+          .find(query)
+          .limit(+paginationQuery.maxResults)
+          .sort(`createdAt: 1`)
+          .exec()
+      : [];
 
     const engagements = await this.engagementModel.find({
       targetRef: {
@@ -355,16 +355,17 @@ export class CommentService {
       },
     });
 
-    const payload = await this.convertCommentsToCommentResponse(
+    const response = await this.convertCommentsToCommentResponse(
       viewer,
       comments,
       engagements,
-      options
+      { hasRelationshipExpansion: false }
     );
 
     return {
-      payload,
-      meta: createCastcleMeta(comments),
-    };
+      payload: response.payload,
+      includes: response.includes,
+      meta: createCastcleMeta(comments, total),
+    } as CommentsResponse;
   };
 }
