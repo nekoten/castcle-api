@@ -72,12 +72,6 @@ export class CommentPayload {
   updatedAt: string;
 }
 
-// export class CommentsResponse {
-//   message?: string;
-//   payload: CommentPayload[];
-//   meta: CastcleMeta;
-// }
-
 export class CreateCommentBody {
   @ApiProperty()
   @IsString()
@@ -115,10 +109,6 @@ export class CommentIncludes {
       );
 
       if (authorIndex >= 0) return;
-
-      // author.avatar = author.avatar
-      //   ? new Image(author.avatar).toSignUrls()
-      //   : Configs.DefaultAvatarImages;
 
       authors.push(author);
     });

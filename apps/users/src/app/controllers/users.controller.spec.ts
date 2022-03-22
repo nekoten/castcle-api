@@ -39,7 +39,7 @@ import {
   QueueName,
   SocialProvider,
   SocialSyncService,
-  UserService,
+  UserService
 } from '@castcle-api/database';
 import {
   AdsQuery,
@@ -55,7 +55,7 @@ import {
   SocialSyncDto,
   UpdateUserDto,
   UserField,
-  UserResponseDto,
+  UserResponseDto
 } from '@castcle-api/database/dtos';
 import { generateMockUsers, MockUserDetail } from '@castcle-api/database/mocks';
 import {
@@ -66,7 +66,7 @@ import {
   Engagement,
   SocialSync,
   User,
-  UserType,
+  UserType
 } from '@castcle-api/database/schemas';
 import { Configs } from '@castcle-api/environments';
 import { Downloader } from '@castcle-api/utils/aws';
@@ -1930,7 +1930,8 @@ describe('AppController', () => {
         },
         credential
       );
-      expect(comment.payload).toBeDefined();
+      expect(comment.payload.payload).toBeDefined();
+      expect(comment.payload.includes).toBeDefined();
     });
 
     it('updateComment() should update a message of comment', async () => {
