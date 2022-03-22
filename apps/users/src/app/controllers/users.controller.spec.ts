@@ -39,7 +39,7 @@ import {
   QueueName,
   SocialProvider,
   SocialSyncService,
-  UserService
+  UserService,
 } from '@castcle-api/database';
 import {
   AdsQuery,
@@ -55,7 +55,7 @@ import {
   SocialSyncDto,
   UpdateUserDto,
   UserField,
-  UserResponseDto
+  UserResponseDto,
 } from '@castcle-api/database/dtos';
 import { generateMockUsers, MockUserDetail } from '@castcle-api/database/mocks';
 import {
@@ -66,7 +66,7 @@ import {
   Engagement,
   SocialSync,
   User,
-  UserType
+  UserType,
 } from '@castcle-api/database/schemas';
 import { Configs } from '@castcle-api/environments';
 import { Downloader } from '@castcle-api/utils/aws';
@@ -1923,22 +1923,23 @@ describe('AppController', () => {
     it('createComment() should be able to create a comment content', async () => {
       const user = mocksUsers[0].user;
       comment = await appController.createComment(
-        user._id,
+        user.id,
         {
           message: 'hello',
           contentId: content._id,
         },
         credential
       );
-      expect(comment.payload.payload).toBeDefined();
-      expect(comment.payload.includes).toBeDefined();
+
+      expect(comment.payload).toBeDefined();
+      expect(comment.includes).toBeDefined();
     });
 
     it('updateComment() should update a message of comment', async () => {
       const user = mocksUsers[0].user;
       const updateComment = await appController.updateComment(
         user.displayId,
-        comment.payload.payload.id,
+        comment.payload.id,
         { message: 'zup' },
         credential
       );
@@ -1950,7 +1951,7 @@ describe('AppController', () => {
       await expect(
         appController.updateComment(
           user.displayId,
-          comment.payload.payload.id,
+          comment.payload.id,
           { message: 'zup' },
           credential
         )
@@ -1966,7 +1967,7 @@ describe('AppController', () => {
 
       const replyResult = await appController.replyComment(
         user1.displayId,
-        comment.payload.payload.id,
+        comment.payload.id,
         { message: 'yo' },
         credentialUser1
       );
@@ -1978,7 +1979,7 @@ describe('AppController', () => {
       await expect(
         appController.deleteComment(
           user.displayId,
-          comment.payload.payload.id,
+          comment.payload.id,
           credential
         )
       ).rejects.toEqual(new CastcleException(CastcleStatus.FORBIDDEN_REQUEST));
@@ -1988,7 +1989,7 @@ describe('AppController', () => {
       const user = mocksUsers[0].user;
       await appController.deleteComment(
         user.displayId,
-        comment.payload.payload.id,
+        comment.payload.id,
         credential
       );
       const result = await commentService.getCommentsByContentId(

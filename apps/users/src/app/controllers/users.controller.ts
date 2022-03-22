@@ -2058,46 +2058,48 @@ export class UsersController {
   async createComment(
     @Param('id') id: string,
     @Body() commentBody: CreateCommentBody,
-    @Req() { $credential }: CredentialRequest
+    @Req() req: CredentialRequest
   ) {
     this.logger.log('Start comment : ' + JSON.stringify(commentBody));
-    try {
-      const [authorizedUser, content, user] = await Promise.all([
-        this.authService.getUserFromAccount($credential.account),
-        this.contentService.getContentById(commentBody.contentId),
-        this.userService.getByIdOrCastcleId(id),
-      ]);
 
-      const comment = await this.contentService.createCommentForContent(
-        user,
-        content,
-        { message: commentBody.message }
-      );
+    const requestUser = await this._getUser(id, req.$credential);
+    const authorizedUser = await this._validateOwnerAccount(req, requestUser);
 
-      this.notifyService.notifyToUser({
+    const content = await this.contentService.getContentById(
+      commentBody.contentId
+    );
+    if (!content) throw new CastcleException(CastcleStatus.FORBIDDEN_REQUEST);
+
+    const comment = await this.contentService.createCommentForContent(
+      authorizedUser,
+      content,
+      { message: commentBody.message }
+    );
+
+    this.notifyService.notifyToUser(
+      {
+        source:
+          authorizedUser.type === UserType.People
+            ? NotificationSource.Profile
+            : NotificationSource.Page,
+        sourceUserId: authorizedUser._id,
         type: NotificationType.Comment,
-        message: `${user.displayName} ตอบกลับโพสต์ของคุณ`,
+        targetRef: { _id: content._id, ref: NotificationRef.Content },
+        account: authorizedUser.ownerAccount,
         read: false,
-        source: NotificationSource.Profile,
-        sourceUserId: user._id,
-        targetRef: {
-          _id: comment._id,
-        },
-        account: { _id: content.author.id },
-      });
+      },
+      authorizedUser,
+      req.$language
+    );
 
-      const payload = await this.commentService.convertCommentToCommentResponse(
-        authorizedUser,
-        comment,
-        [],
-        { hasRelationshipExpansion: false }
-      );
+    const payload = await this.commentService.convertCommentToCommentResponse(
+      authorizedUser,
+      comment,
+      [],
+      { hasRelationshipExpansion: false }
+    );
 
-      return { payload };
-    } catch (error) {
-      this.logger.error(error);
-      throw new CastcleException(CastcleStatus.INVALID_ACCESS_TOKEN);
-    }
+    return payload;
   }
 
   @ApiBody({
@@ -2122,14 +2124,12 @@ export class UsersController {
       message: editCommentBody.message,
     });
 
-    return {
-      payload: await this.commentService.convertCommentToCommentResponse(
-        authorizedUser,
-        updatedComment,
-        [],
-        { hasRelationshipExpansion: false }
-      ),
-    };
+    return await this.commentService.convertCommentToCommentResponse(
+      authorizedUser,
+      updatedComment,
+      [],
+      { hasRelationshipExpansion: false }
+    );
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -2175,25 +2175,26 @@ export class UsersController {
         message: replyCommentBody.message,
       }
     );
-    this.notifyService.notifyToUser({
-      type: NotificationType.Comment,
-      message: `${authorizedUser.displayName} ตอบกลับความคิดเห็นของคุณ`,
-      read: false,
-      source: NotificationSource.Profile,
-      sourceUserId: authorizedUser._id,
-      targetRef: {
-        _id: comment._id,
+    this.notifyService.notifyToUser(
+      {
+        source:
+          authorizedUser.type === UserType.People
+            ? NotificationSource.Profile
+            : NotificationSource.Page,
+        sourceUserId: authorizedUser._id,
+        type: NotificationType.Reply,
+        targetRef: { _id: comment._id, ref: NotificationRef.Comment },
+        account: authorizedUser.ownerAccount,
+        read: false,
       },
-      account: { _id: comment.author._id },
-    });
-
-    return {
-      payload: await this.commentService.convertCommentToCommentResponse(
-        authorizedUser,
-        replyComment,
-        [],
-        { hasRelationshipExpansion: false }
-      ),
-    };
+      authorizedUser,
+      req.$language
+    );
+    return await this.commentService.convertCommentToCommentResponse(
+      authorizedUser,
+      replyComment,
+      [],
+      { hasRelationshipExpansion: false }
+    );
   }
 }
