@@ -61,7 +61,7 @@ import { AccountAuthenIdType } from '@castcle-api/database/schemas';
 import { generateMockUsers, MockUserDetail } from '@castcle-api/database/mocks';
 import { CastcleException, CastcleStatus } from '@castcle-api/utils/exception';
 
-describe('AppController', () => {
+describe('AuthenticationControllerV2', () => {
   let mongod: MongoMemoryServer;
   let app: TestingModule;
   let controller: AuthenticationControllerV2;
