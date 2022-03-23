@@ -35,6 +35,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthenticationController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthenticationControllerV2 } from './controllers/authentication.controller.v2';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { AppService } from './app.service';
       daemonAddress: Environment.AWS_XRAY_DAEMON_ADDRESS,
     }),
   ],
-  controllers: [AuthenticationController],
+  controllers: [AuthenticationController, AuthenticationControllerV2],
   providers: [
     AppService,
     {

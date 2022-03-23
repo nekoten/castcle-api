@@ -732,6 +732,7 @@ export class UserService {
         this.removeAllEngagementsFromUsers(users),
         this.removeAllPagesAndUsersFromAccount(account),
         this.removeAllRelationshipsFromUsers(users),
+        this.removeReferralCountParentAccountFromAccount(account),
       ]);
 
       this.logger.log(
@@ -767,6 +768,12 @@ export class UserService {
     return this._accountReferral.updateMany(
       { $or: [{ referrerAccount: account }, { referringAccount: account }] },
       { visibility: EntityVisibility.Deleted }
+    );
+  };
+  removeReferralCountParentAccountFromAccount = (account: Account) => {
+    return this._accountModel.updateOne(
+      { _id: account.referralBy },
+      { $inc: { referralCount: -1 } }
     );
   };
 

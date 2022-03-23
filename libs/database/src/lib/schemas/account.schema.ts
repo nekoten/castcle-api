@@ -81,12 +81,10 @@ class AccountDocument extends CastcleBase {
     ref: 'Account',
     index: true,
   })
-  referrerAccount?: Types.ObjectId;
+  referralBy?: Types.ObjectId;
 
-  @Prop({
-    type: Number,
-  })
-  referringCounts?: number;
+  @Prop({ required: true, default: 0 })
+  referralCount: number;
   /**
    * TO DO !!! this is a hot fix for guests
    */

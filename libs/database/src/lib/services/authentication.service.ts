@@ -362,10 +362,13 @@ export class AuthenticationService {
     return savedAccount;
   }
 
-  async signupByEmail(account: Account, requirements: SignupRequirements) {
+  async signupByEmail(
+    account: Account,
+    { password, ...requirements }: SignupRequirements
+  ) {
     account.isGuest = false;
 
-    await account.changePassword(requirements.password, requirements.email);
+    await account.changePassword(password, requirements.email);
     await new this._userModel({
       ownerAccount: account._id,
       displayName: requirements.displayName,
@@ -383,22 +386,23 @@ export class AuthenticationService {
       (await this.getReferrerByRequestMetadata(requirements.ip));
 
     if (referrer) {
-      await new this._accountReferral({
-        referrerAccount: referrer.ownerAccount,
-        referrerDisplayId: referrer.displayId,
-        referringAccount: account._id,
-      }).save();
-      account.referrerAccount = referrer.ownerAccount._id;
-      await account.save();
-
-      await this._accountModel.updateOne(
-        {
-          _id: referrer.ownerAccount._id,
-        },
-        {
-          $inc: { referringCounts: 1 },
-        }
-      );
+      account.referralBy = referrer.ownerAccount._id;
+      await Promise.all([
+        new this._accountReferral({
+          referrerAccount: referrer.ownerAccount,
+          referrerDisplayId: referrer.displayId,
+          referringAccount: account._id,
+        }).save(),
+        account.save(),
+        this._accountModel.updateOne(
+          {
+            _id: referrer.ownerAccount._id,
+          },
+          {
+            $inc: { referralCount: 1 },
+          }
+        ),
+      ]);
     }
 
     this.logger.log(
@@ -636,23 +640,23 @@ export class AuthenticationService {
       (await this.getReferrerByRequestMetadata(requirements.ip));
 
     if (referrer) {
-      await new this._accountReferral({
-        referrerAccount: referrer.ownerAccount,
-        referrerDisplayId: referrer.displayId,
-        referringAccount: account._id,
-      }).save();
-
-      account.referrerAccount = referrer.ownerAccount._id;
-      await account.save();
-
-      await this._accountModel.updateOne(
-        {
-          _id: referrer.ownerAccount._id,
-        },
-        {
-          $inc: { referringCounts: 1 },
-        }
-      );
+      account.referralBy = referrer.ownerAccount._id;
+      await Promise.all([
+        new this._accountReferral({
+          referrerAccount: referrer.ownerAccount,
+          referrerDisplayId: referrer.displayId,
+          referringAccount: account._id,
+        }).save(),
+        account.save(),
+        this._accountModel.updateOne(
+          {
+            _id: referrer.ownerAccount._id,
+          },
+          {
+            $inc: { referralCount: 1 },
+          }
+        ),
+      ]);
     }
 
     this.logger.log(
