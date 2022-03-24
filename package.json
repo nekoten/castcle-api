@@ -6,6 +6,7 @@
     "nx": "nx",
     "start": "nx serve",
     "start:all": "nx run-many --target=serve --all --parallel --maxParallel=7",
+    "start:metadata": "nx serve metadata",
     "build": "nx build",
     "build:all": "nx run-many --target=build --all",
     "test": "nx test",

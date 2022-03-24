@@ -34,6 +34,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { CountryController } from './controllers/country.controller';
 import { HashtagsController } from './controllers/hashtags.controller';
 import { LanguagesController } from './controllers/languages.controller';
+import { FeaturesController } from './controllers/features.controller';
 
 @Module({
   imports: [
@@ -46,7 +47,12 @@ import { LanguagesController } from './controllers/languages.controller';
       daemonAddress: Environment.AWS_XRAY_DAEMON_ADDRESS,
     }),
   ],
-  controllers: [LanguagesController, HashtagsController, CountryController],
+  controllers: [
+    LanguagesController,
+    HashtagsController,
+    CountryController,
+    FeaturesController,
+  ],
   providers: [
     {
       provide: APP_INTERCEPTOR,

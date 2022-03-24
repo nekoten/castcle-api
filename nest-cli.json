@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "country": {
+      "type": "library",
+      "root": "libs/country",
+      "entryFile": "index",
+      "sourceRoot": "libs/country/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/country/tsconfig.lib.json"
+      }
+    }
+  },
+  "compilerOptions": {
+    "webpack": true
+  }
+}

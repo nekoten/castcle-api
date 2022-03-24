@@ -21,22 +21,38 @@
  * or have any questions.
  */
 
-export * from './comment.dto';
-export * from './common.dto';
-export * from './content.dto';
-export * from './country.dto';
-export * from './feature.dto';
-export * from './feed.dto';
-export * from './guest-feed-item.dto';
-export * from './hashtag.dto';
-export * from './language.dto';
-export * from './link-preview.dto';
-export * from './notification.dto';
-export * from './pagination.dto';
-export * from './query.dto';
-export * from './response.dto';
-export * from './search.dto';
-export * from './token.dto';
-export * from './user.dto';
-export * from './ux.engagement.dto';
-export * from './ads.dto';
+import { connect, disconnect, Document, model } from 'mongoose';
+import {
+  FeatureDocument,
+  FeatureSchema,
+} from '../libs/database/src/lib/schemas/feature.schema';
+
+class CreateFeatures {
+  static run = async () => {
+    const featureDocuments: Omit<FeatureDocument, keyof Document>[] = [
+      {
+        slug: 'feed',
+        name: 'Feed',
+        key: 'feature.feed'
+      },
+    ];
+
+    const args = {} as Record<string, string>;
+
+    process.argv.forEach((arg) => {
+      const v = arg.match(/--(\w+)=(.+)/);
+      if (v) args[v[1]] = v[2];
+    });
+
+    const dbName = args['dbName'] || 'test';
+    const url = args['url'] || `mongodb://localhost:27017/${dbName}`;
+    await connect(url);
+    const featureModel = model('Features', FeatureSchema);
+    const features = await featureModel.create(featureDocuments);
+    await disconnect();
+
+    console.info(JSON.stringify(features, null, 4));
+  };
+}
+
+CreateFeatures.run().catch(console.error);

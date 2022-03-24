@@ -21,22 +21,29 @@
  * or have any questions.
  */
 
-export * from './comment.dto';
-export * from './common.dto';
-export * from './content.dto';
-export * from './country.dto';
-export * from './feature.dto';
-export * from './feed.dto';
-export * from './guest-feed-item.dto';
-export * from './hashtag.dto';
-export * from './language.dto';
-export * from './link-preview.dto';
-export * from './notification.dto';
-export * from './pagination.dto';
-export * from './query.dto';
-export * from './response.dto';
-export * from './search.dto';
-export * from './token.dto';
-export * from './user.dto';
-export * from './ux.engagement.dto';
-export * from './ads.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { SortDirection } from '.';
+import { CastcleQueryOptions } from './common.dto';
+
+export class FeaturePayloadDto {
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  key: string;
+}
+
+export class FeatureResponse {
+  @ApiProperty({ type: FeaturePayloadDto, isArray: true })
+  payload: FeaturePayloadDto[];
+}
+
+export const DEFAULT_FEATURE_QUERY_OPTIONS = {
+  sortBy: {
+    field: 'name',
+    type: SortDirection.ASC,
+  },
+} as CastcleQueryOptions;

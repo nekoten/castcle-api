@@ -41,6 +41,7 @@ import {
   CommentSchemaFactory,
   ContentSchemaFactory,
   CountrySchema,
+  FeatureSchema,
   CredentialSchema,
   DsContentReachSchema,
   EngagementSchemaFactory,
@@ -67,6 +68,7 @@ import { CampaignService } from './services/campaign.service';
 import { CommentService } from './services/comment.service';
 import { ContentService } from './services/content.service';
 import { CountryService } from './services/country.service';
+import { FeatureService } from './services/feature.service';
 import { DataService } from './services/data.service';
 import { HashtagService } from './services/hashtag.service';
 import { LanguageService } from './services/language.service';
@@ -91,8 +93,10 @@ export const MongooseForFeatures = MongooseModule.forFeature([
   { name: 'Analytic', schema: AnalyticSchema },
   { name: 'Campaign', schema: CampaignSchema },
   { name: 'Country', schema: CountrySchema },
+  { name: 'Feature', schema: FeatureSchema },
   { name: 'DefaultContent', schema: DefaultContentSchema },
   { name: 'DsContentReach', schema: DsContentReachSchema },
+  { name: 'Feature', schema: FeatureSchema },
   { name: 'GuestFeedItem', schema: GuestFeedItemSchema },
   { name: 'Hashtag', schema: HashtagSchema },
   { name: 'Language', schema: LanguageSchema },
@@ -176,6 +180,7 @@ export const MongooseAsyncFeatures = MongooseModule.forFeatureAsync([
     AdsService,
     AnalyticService,
     DataService,
+    FeatureService,
   ],
   exports: [
     AuthenticationService,
@@ -194,6 +199,7 @@ export const MongooseAsyncFeatures = MongooseModule.forFeatureAsync([
     AdsService,
     AnalyticService,
     DataService,
+    FeatureService,
   ],
 })
 export class DatabaseModule {}
@@ -218,4 +224,5 @@ export {
   AdsService,
   AnalyticService,
   DataService,
+  FeatureService,
 };
