@@ -22,28 +22,34 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { SortDirection } from '.';
-import { CastcleQueryOptions } from './common.dto';
+// import { SortDirection } from '.';
+// import { CastcleQueryOptions } from './common.dto';
 
 export class FeaturePayloadDto {
   @ApiProperty()
+  id: string;
+  @ApiProperty()
   slug: string;
-
   @ApiProperty()
   name: string;
-
   @ApiProperty()
   key: string;
+  @ApiProperty()
+  createdAt: string;
+  @ApiProperty()
+  updatedAt: string;
 }
 
 export class FeatureResponse {
+  @ApiProperty()
+  message: string;
   @ApiProperty({ type: FeaturePayloadDto, isArray: true })
   payload: FeaturePayloadDto[];
 }
 
-export const DEFAULT_FEATURE_QUERY_OPTIONS = {
-  sortBy: {
-    field: 'name',
-    type: SortDirection.ASC,
-  },
-} as CastcleQueryOptions;
+// export const DEFAULT_FEATURE_QUERY_OPTIONS = {
+//   sortBy: {
+//     field: 'name',
+//     type: SortDirection.ASC,
+//   },
+// } as CastcleQueryOptions;

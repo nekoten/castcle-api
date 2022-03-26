@@ -35,6 +35,7 @@ import { CountryController } from './controllers/country.controller';
 import { HashtagsController } from './controllers/hashtags.controller';
 import { LanguagesController } from './controllers/languages.controller';
 import { FeaturesController } from './controllers/features.controller';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { FeaturesController } from './controllers/features.controller';
     HealthyModule,
     UtilsInterceptorsModule,
     UtilsCacheModule,
+    HttpModule,
     TracingModule.forRoot({
       serviceName: 'metadata',
       daemonAddress: Environment.AWS_XRAY_DAEMON_ADDRESS,

@@ -52,13 +52,17 @@ import { CastcleBase } from './base.schema';
 @Schema({ timestamps: true })
 export class FeatureDocument extends CastcleBase {
   @Prop({ required: true })
+  id: string;
+  @Prop({ required: true })
   slug: string;
-
   @Prop({ required: true })
   name: string;
-
   @Prop({ required: true })
   key: string;
+  @Prop({ required: true })
+  createdAt: Date;
+  @Prop({ required: true })
+  updatedAt: Date;
 }
 
 export const FeatureSchema = SchemaFactory.createForClass(FeatureDocument);
@@ -68,8 +72,11 @@ export class Feature extends FeatureDocument {
 }
 FeatureSchema.methods.toFeaturePayload = function () {
   return {
+    id: this.id,
     slug: this.slug,
     name: this.name,
     key: this.key,
+    createdAt: this.createdAt.toISOString(),
+    updatedAt: this.updatedAt.toISOString(),
   } as FeaturePayloadDto;
 };

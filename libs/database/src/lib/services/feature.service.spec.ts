@@ -35,19 +35,28 @@ describe('FeatureService', () => {
   describe('#create and get all features', () => {
     it('should create new features in db', async () => {
       const newFeature: FeaturePayloadDto = {
+        id: '623c4554a9a1253338438f9a',
         slug: 'feed',
         name: 'Feed',
         key: 'feed.Feed',
+        createdAt: '2022-03-24T11:15:19.624+00:00',
+        updatedAt: '2022-03-24T11:15:19.624+00:00',
       };
       const newFeature2: FeaturePayloadDto = {
+        id: '623c4554a9a1253338438f9b',
         slug: 'photo',
         name: 'Photo',
         key: 'photo.Photo',
+        createdAt: '2022-03-24T11:15:19.624+00:00',
+        updatedAt: '2022-03-24T11:15:19.624+00:00',
       };
       const newFeature3: FeaturePayloadDto = {
+        id: '623c4554a9a1253338438f9c',
         slug: 'Watch',
         name: 'watch',
         key: 'Watch.watch',
+        createdAt: '2022-03-24T11:15:19.624+00:00',
+        updatedAt: '2022-03-24T11:15:19.624+00:00',
       };
       const resultData = await service.create(newFeature);
       const resultData2 = await service.create(newFeature2);

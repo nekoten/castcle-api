@@ -31,9 +31,10 @@ class CreateFeatures {
   static run = async () => {
     const featureDocuments: Omit<FeatureDocument, keyof Document>[] = [
       {
+        id: '1',
         slug: 'feed',
         name: 'Feed',
-        key: 'feature.feed'
+        key: 'feature.feed',
       },
     ];
 
